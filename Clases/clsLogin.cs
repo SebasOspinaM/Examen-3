@@ -1,92 +1,79 @@
-﻿using System;
+﻿using Examen_3.Models;
+using Servicios_Jue.Clases;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
+using System;
 
-namespace Examen_3.Clases
+public class clsLogin
 {
-    public class clsLogin
-    {
+    private NatilleraEntities2 dbSuper = new NatilleraEntities2();
+    public Login login { get; set; }
+    private LoginRespuesta logRpta;
 
-        public clsLogin()
+    private bool ValidarAdministrador()
+    {
+        try
         {
-            loginRespuesta = new LoginRespuesta();
-        }
-        public NatilleraEntities2 dbSuper = new NatilleraEntities2();
-        public Login login { get; set; }
-        public LoginRespuesta loginRespuesta { get; set; }
-        public bool ValidarUsuario()
-        {
-            try
+            // Validación simple: texto plano
+            Administrador admin = dbSuper.Administradors.FirstOrDefault(a => a.Usuario == login.Usuario);
+
+            if (admin == null)
             {
-                clsCypher cifrar = new clsCypher();
-                Administrador usuario = dbSuper.Administradors.FirstOrDefault(u => u.userName == login.Usuario);
-                if (usuario == null)
-                {
-                    loginRespuesta.Autenticado = false;
-                    loginRespuesta.Mensaje = "Usuario no existe";
-                    return false;
-                }
-                byte[] arrBytesSalt = Convert.FromBase64String(usuario.Salt);
-                string ClaveCifrada = cifrar.HashPassword(login.Clave, arrBytesSalt);
-                login.Clave = ClaveCifrada;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                loginRespuesta.Autenticado = false;
-                loginRespuesta.Mensaje = ex.Message;
+                logRpta = new LoginRespuesta();
+                logRpta.Mensaje = "Administrador no existe";
                 return false;
             }
-        }
-      private bool ValidarClave()
-        {
-            try
+
+            if (admin.Clave != login.Clave)
             {
-                Usuario usuario = dbSuper.Usuarios.FirstOrDefault(u => u.userName == login.Usuario && u.Clave == login.Clave);
-                if (usuario == null)
-                {
-                    loginRespuesta.Autenticado = false;
-                    loginRespuesta.Mensaje = "La clave no coincide";
-                    return false;
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                loginRespuesta.Autenticado = false;
-                loginRespuesta.Mensaje = ex.Message;
+                logRpta = new LoginRespuesta();
+                logRpta.Mensaje = "Clave incorrecta";
                 return false;
             }
+
+            // Validación exitosa
+            return true;
         }
-        public IQueryable<LoginRespuesta> Ingresar()
+        catch (Exception ex)
         {
-            if (ValidarUsuario() && ValidarClave())
+            logRpta = new LoginRespuesta();
+            logRpta.Mensaje = ex.Message;
+            return false;
+        }
+    }
+
+    public IQueryable<LoginRespuesta> Ingresar()
+    {
+        if (ValidarAdministrador())
+        {
+            string token = TokenGenerator.GenerateTokenJwt(login.Usuario);
+
+            return from A in dbSuper.Set<Administrador>()
+                   where A.Usuario == login.Usuario && A.Clave == login.Clave
+                   select new LoginRespuesta
+                   {
+                       Usuario = A.Usuario,
+                       Autenticado = true,
+                       Token = token,
+                       Perfil = "Administrador",  // Puedes cambiar esto si tienes roles
+                       PaginaInicio = "/eventos", // Página inicial sugerida
+                       Mensaje = "Administrador autenticado",
+                   };
+        }
+        else
+        {
+            return new List<LoginRespuesta>
             {
-                string token = TokenGenerator.GenerateTokenJwt(login.Usuario);
-                return from U in dbSuper.Set<Usuario>()
-                       join UP in dbSuper.Set<Usuario_Perfil>()
-                       on U.id equals UP.idUsuario
-                       join P in dbSuper.Set<Perfil>()
-                       on UP.idPerfil equals P.id
-                       where U.userName == login.Usuario &&
-                               U.Clave == login.Clave
-                       select new LoginRespuesta
-                       {
-                           Usuario = U.userName,
-                           Autenticado = true,
-                           Perfil = P.Nombre,
-                           PaginaInicio = P.PaginaNavegar,
-                           Token = token,
-                           Mensaje = ""
-                       };
-            }
-            else
-            {
-                List<LoginRespuesta> List = new List<LoginRespuesta>();
-                List.Add(loginRespuesta);
-                return List.AsQueryable();
-            }
+                new LoginRespuesta
+                {
+                    Usuario = login.Usuario,
+                    Autenticado = false,
+                    Token = null,
+                    Perfil = null,
+                    PaginaInicio = null,
+                    Mensaje = logRpta.Mensaje
+                }
+            }.AsQueryable();
         }
     }
 }

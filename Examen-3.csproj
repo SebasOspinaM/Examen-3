@@ -216,6 +216,9 @@
     <Compile Include="Areas\HelpPage\SampleGeneration\TextSample.cs" />
     <Compile Include="Areas\HelpPage\XmlDocumentationProvider.cs" />
     <Compile Include="Clases\clsEventos.cs" />
+    <Compile Include="Clases\clsLogin.cs" />
+    <Compile Include="Clases\TokenGenerator.cs" />
+    <Compile Include="Clases\TokenValidationHandler.cs" />
     <Compile Include="Controllers\EventosController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\ValuesController.cs" />
@@ -228,6 +231,7 @@
     <Compile Include="Models\Evento.cs">
       <DependentUpon>Model1.tt</DependentUpon>
     </Compile>
+    <Compile Include="Models\libLogin.cs" />
     <Compile Include="Models\Model1.Context.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
